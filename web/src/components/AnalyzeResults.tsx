@@ -171,8 +171,8 @@ export function AnalyzeResults({ data }: { data: AnalyzeResultPayload }) {
   }, [data.matches, data.tokenCount, data.extractionSource]);
 
   const analysis = useMemo(
-    () => computeMealAnalysis(data.matches, confirmedQueries, FOODS),
-    [data.matches, confirmedQueries],
+    () => computeMealAnalysis(data.matches, confirmedQueries, FOODS, data.mealCode),
+    [data.matches, confirmedQueries, data.mealCode],
   );
 
   const extractionLabel =

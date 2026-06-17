@@ -18,6 +18,8 @@ export type MealAnalysisPayload = {
   foodOptions: { id: string; name: string }[];
   pendingConfirmationCount: number;
   analysisEvidence: string;
+  /** 1=조식 2=중식 3=석식 4=간식 · 없으면 일일 목표 */
+  mealCode?: string;
   neisMeal?: {
     schoolName: string;
     date: string;
@@ -83,6 +85,7 @@ export async function runMealAnalysis(
       foodOptions: allFoods.map((f) => ({ id: f.id, name: f.name })),
       pendingConfirmationCount: analysis.pendingConfirmationCount,
       analysisEvidence,
+      mealCode: options?.mealCode,
       neisMeal: options?.neisMeal,
     },
   };
