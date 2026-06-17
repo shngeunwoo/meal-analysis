@@ -1,0 +1,15 @@
+---
+description: 식사 분석 파이프라인(lib) 작업 시
+globs: web/src/lib/**/*.ts
+alwaysApply: false
+---
+
+# 파이프라인 모듈
+
+- `extract`: 파일 → 원시 텍스트 (OCR/PDF).
+- `parse`: 원시 텍스트 → 음식명 후보 목록.
+- `match`: 영양 DB와 매칭, 신뢰도.
+- `analysis`: 합산·일일 목표 대비 부족.
+- `recommend`: 부족 기반 다음 식사 후보 (나트륨 등 상한 고려).
+
+한 파일이 여러 책임을 가지면 분리한다. 외부 API는 인터페이스 뒤에 두어 테스트에서 목킹한다.
