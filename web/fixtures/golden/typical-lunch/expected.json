@@ -1,0 +1,8 @@
+{
+  "candidates": ["백미밥", "김치찌개", "불고기"],
+  "matches": [
+    { "query": "백미밥", "foodId": "rice", "minConfidence": 0.9 },
+    { "query": "김치찌개", "foodId": "soup", "minConfidence": 0.9 },
+    { "query": "불고기", "foodId": "main_meat", "minConfidence": 0.9 }
+  ]
+}

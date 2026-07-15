@@ -1,0 +1,202 @@
+[
+  {
+    "id": "rice",
+    "name": "밥",
+    "aliases": ["백미밥", "흰밥", "쌀밥", "공기밥", "밥", "잡곡밥", "현미밥", "곤드레밥", "곤드레나물밥", "나물밥", "시래기밥"],
+    "nutrientsPerServing": {
+      "energy_kcal": 300,
+      "protein_g": 6,
+      "fat_g": 1,
+      "carb_g": 65,
+      "sodium_mg": 10,
+      "fiber_g": 2
+    }
+  },
+  {
+    "id": "soup",
+    "name": "국",
+    "aliases": ["국", "국물", "된장국", "된장찌개", "김치찌개", "김치국", "미역국", "무국", "쇠고기무국", "무채장국"],
+    "nutrientsPerServing": {
+      "energy_kcal": 70,
+      "protein_g": 4,
+      "fat_g": 3,
+      "carb_g": 6,
+      "sodium_mg": 650,
+      "fiber_g": 1
+    }
+  },
+  {
+    "id": "main_meat",
+    "name": "고기류",
+    "aliases": ["불고기", "소불고기", "제육볶음", "닭갈비", "탕수육", "햄", "소시지", "스테이크"],
+    "nutrientsPerServing": {
+      "energy_kcal": 280,
+      "protein_g": 22,
+      "fat_g": 18,
+      "carb_g": 8,
+      "sodium_mg": 600,
+      "fiber_g": 0
+    }
+  },
+  {
+    "id": "fried_chicken",
+    "name": "치킨",
+    "aliases": ["치킨", "후라이드치킨", "프라이드치킨", "양념치킨", "간장치킨", "마늘치킨", "닭강정", "닭튀김", "닭구이"],
+    "nutrientsPerServing": {
+      "energy_kcal": 420,
+      "protein_g": 28,
+      "fat_g": 24,
+      "carb_g": 22,
+      "sodium_mg": 820,
+      "fiber_g": 0.5
+    }
+  },
+  {
+    "id": "fish",
+    "name": "생선류",
+    "aliases": ["생선구이", "고등어구이", "갈치구이", "연어구이", "조기구이", "김구이", "구운김"],
+    "nutrientsPerServing": {
+      "energy_kcal": 200,
+      "protein_g": 22,
+      "fat_g": 12,
+      "carb_g": 2,
+      "sodium_mg": 420,
+      "fiber_g": 0.2
+    }
+  },
+  {
+    "id": "side_veg",
+    "name": "야채반찬",
+    "aliases": ["나물", "시금치나물", "콩나물무침", "무생채", "깍두기", "열무김치", "겉절이", "김치", "배추김치"],
+    "nutrientsPerServing": {
+      "energy_kcal": 40,
+      "protein_g": 2,
+      "fat_g": 1,
+      "carb_g": 6,
+      "sodium_mg": 350,
+      "fiber_g": 2.5
+    }
+  },
+  {
+    "id": "salad",
+    "name": "샐러드",
+    "aliases": ["샐러드", "야채샐러드", "사라다", "채소샐러드"],
+    "nutrientsPerServing": {
+      "energy_kcal": 60,
+      "protein_g": 2,
+      "fat_g": 3,
+      "carb_g": 7,
+      "sodium_mg": 150,
+      "fiber_g": 3
+    }
+  },
+  {
+    "id": "noodle",
+    "name": "면류",
+    "aliases": ["라면", "우동", "국수", "짜장면", "짬뽕", "비빔국수", "막국수", "쫄면"],
+    "nutrientsPerServing": {
+      "energy_kcal": 500,
+      "protein_g": 14,
+      "fat_g": 18,
+      "carb_g": 75,
+      "sodium_mg": 1600,
+      "fiber_g": 3
+    }
+  },
+  {
+    "id": "rice_dish",
+    "name": "일품밥",
+    "aliases": ["비빔밥", "돌솥비빔밥", "카레라이스", "오므라이스", "볶음밥", "김치볶음밥", "덮밥"],
+    "nutrientsPerServing": {
+      "energy_kcal": 650,
+      "protein_g": 16,
+      "fat_g": 18,
+      "carb_g": 100,
+      "sodium_mg": 900,
+      "fiber_g": 5
+    }
+  },
+  {
+    "id": "fruit",
+    "name": "과일",
+    "aliases": ["과일", "사과", "바나나", "귤", "배", "포도", "수박", "참외", "딸기", "키위"],
+    "nutrientsPerServing": {
+      "energy_kcal": 80,
+      "protein_g": 0.5,
+      "fat_g": 0.2,
+      "carb_g": 20,
+      "sodium_mg": 2,
+      "fiber_g": 2.5
+    }
+  },
+  {
+    "id": "dessert_snack",
+    "name": "간식",
+    "aliases": ["떡", "떡볶이", "호떡", "과자", "쿠키", "케이크", "빵", "도넛"],
+    "nutrientsPerServing": {
+      "energy_kcal": 250,
+      "protein_g": 4,
+      "fat_g": 8,
+      "carb_g": 40,
+      "sodium_mg": 300,
+      "fiber_g": 1
+    }
+  },
+  {
+    "id": "milk",
+    "name": "우유",
+    "aliases": ["우유", "저지방우유", "초코우유", "딸기우유"],
+    "nutrientsPerServing": {
+      "energy_kcal": 130,
+      "protein_g": 8,
+      "fat_g": 4.5,
+      "carb_g": 12,
+      "sodium_mg": 100,
+      "fiber_g": 0
+    }
+  },
+  {
+    "id": "yogurt",
+    "name": "요거트",
+    "aliases": ["요거트", "플레인요거트", "요구르트", "야쿠르트"],
+    "nutrientsPerServing": {
+      "energy_kcal": 110,
+      "protein_g": 4,
+      "fat_g": 3,
+      "carb_g": 18,
+      "sodium_mg": 70,
+      "fiber_g": 0
+    }
+  },
+  {
+    "id": "juice",
+    "name": "주스",
+    "aliases": [
+      "주스", "쥬스", "과일주스", "과일쥬스", "오렌지주스", "사과주스", "포도주스",
+      "아로니아쥬스", "아로니아주스", "블루베리주스", "토마토주스", "당근주스",
+      "키위주스", "망고주스", "파인애플주스", "자몽주스", "레몬주스", "수박주스",
+      "딸기주스", "복숭아주스"
+    ],
+    "nutrientsPerServing": {
+      "energy_kcal": 110,
+      "protein_g": 0.5,
+      "fat_g": 0.2,
+      "carb_g": 26,
+      "sodium_mg": 10,
+      "fiber_g": 0.5
+    }
+  },
+  {
+    "id": "beverage",
+    "name": "음료",
+    "aliases": ["음료", "음료수", "이온음료", "스포츠음료", "탄산음료", "콜라", "사이다"],
+    "nutrientsPerServing": {
+      "energy_kcal": 90,
+      "protein_g": 0,
+      "fat_g": 0,
+      "carb_g": 23,
+      "sodium_mg": 25,
+      "fiber_g": 0
+    }
+  }
+]
