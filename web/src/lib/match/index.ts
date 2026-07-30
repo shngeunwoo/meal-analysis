@@ -63,7 +63,26 @@ export function stringSimilarity(a: string, b: string): number {
   const sim = Math.max(0, 1 - d / maxLen);
   // 짧은 문자열의 약한 퍼지 유사도는 오매칭으로 이어지므로 차단
   if (d > 0 && minLen <= 3 && sim < 0.85) return 0;
+  // 양념간장↔양념치킨 처럼 앞만 같고 뒤가 다른 오매칭 완화
+  if (d >= 2 && minLen <= 5 && sim < 0.75) return 0;
   return sim;
+}
+
+/** 급식 부재료·차는 카테고리 오매칭을 막기 위해 강제 힌트 */
+const QUERY_MATCH_HINTS: Record<string, string[]> = {
+  숭늉: ["숭늉", "음료", "차"],
+  보리차: ["보리차", "음료", "차"],
+  양념간장: ["양념간장", "양념초장", "초간장", "간장"],
+  양념장: ["양념장", "양념초장", "초장"],
+};
+
+function hintBoost(query: string, candidate: string): number {
+  const hints = QUERY_MATCH_HINTS[norm(query)];
+  if (!hints?.length) return 0;
+  const nc = norm(candidate);
+  if (hints.some((h) => norm(h) === nc)) return 0.2;
+  if (hints.some((h) => nc.includes(norm(h)) || norm(h).includes(nc))) return 0.1;
+  return 0;
 }
 
 function foodNamesEqual(a: FoodItem, b: FoodItem): boolean {
@@ -80,7 +99,15 @@ function bestFoodForQuery(
   for (const food of database) {
     const candidates = [food.name, ...(food.aliases ?? [])];
     for (const c of candidates) {
-      const conf = stringSimilarity(query, c);
+      const conf = Math.min(1, stringSimilarity(query, c) + hintBoost(query, c));
+      // 짧은 카테고리명(밥·국)은 질의에 그 글자가 있을 때만 허용
+      if (
+        food.name.length <= 2 &&
+        !norm(query).includes(norm(food.name)) &&
+        !(food.aliases ?? []).some((a) => norm(a) === norm(query))
+      ) {
+        continue;
+      }
       if (!best || conf > best.confidence) {
         if (
           best &&

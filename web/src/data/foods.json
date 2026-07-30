@@ -189,13 +189,16 @@
   {
     "id": "beverage",
     "name": "음료",
-    "aliases": ["음료", "음료수", "이온음료", "스포츠음료", "탄산음료", "콜라", "사이다"],
+    "aliases": [
+      "음료", "음료수", "이온음료", "스포츠음료", "탄산음료", "콜라", "사이다",
+      "숭늉", "보리차", "옥수수차", "둥글레차", "결명자차", "식혜", "수정과", "티", "차"
+    ],
     "nutrientsPerServing": {
-      "energy_kcal": 90,
+      "energy_kcal": 15,
       "protein_g": 0,
       "fat_g": 0,
-      "carb_g": 23,
-      "sodium_mg": 25,
+      "carb_g": 3,
+      "sodium_mg": 10,
       "fiber_g": 0
     }
   }

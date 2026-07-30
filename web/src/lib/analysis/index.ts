@@ -71,13 +71,15 @@ const CORE_SERVING_GRAMS: Record<string, number> = {
   yogurt: 100,
   juice: 200,
   drink: 200,
+  beverage: 200,
 };
 
-/** DB 기준 분량(g). MFDS는 meta.basis(보통 100g), 코어는 1인분 대표 중량. */
+/** DB 기준 분량(g). MFDS는 meta.basis(100g·100ml), 코어는 1인분 대표 중량. */
 export function servingBasisGrams(food: FoodItem): number {
   const basis = food.meta?.basis;
   if (typeof basis === "string") {
-    const m = basis.match(/(\d+(?:\.\d+)?)\s*g/i);
+    // ml은 급식 DB에서 밀도≈1로 보고 g와 동일 취급
+    const m = basis.match(/(\d+(?:\.\d+)?)\s*(g|ml)/i);
     if (m) {
       const n = Number(m[1]);
       if (Number.isFinite(n) && n > 0) return n;
@@ -88,15 +90,14 @@ export function servingBasisGrams(food: FoodItem): number {
 
 /**
  * 화면 기본 섭취량(g).
- * MFDS(100g 기준)는 급식·반찬 현실을 반영해 더 작은 기본값을 쓴다.
- * 코어는 1인분 대표 중량(= servingBasisGrams)을 쓴다.
+ * MFDS(100g/100ml 기준)는 급식·양념·반찬 현실을 반영한 기본값을 쓴다.
  */
 export function defaultIntakeGrams(food: FoodItem): number {
   const basis = servingBasisGrams(food);
-  const hasMfdsBasis =
-    typeof food.meta?.basis === "string" && /\d+\s*g/i.test(food.meta.basis);
+  const basisStr = typeof food.meta?.basis === "string" ? food.meta.basis : "";
+  const hasUnitBasis = /\d+\s*(g|ml)/i.test(basisStr);
 
-  if (!hasMfdsBasis) {
+  if (!hasUnitBasis) {
     return CORE_SERVING_GRAMS[food.id] ?? basis;
   }
 
@@ -104,19 +105,26 @@ export function defaultIntakeGrams(food: FoodItem): number {
   const cat = `${food.meta?.categoryLarge ?? ""} ${food.meta?.categoryMid ?? ""}`;
   const text = `${name} ${cat}`;
 
+  // 장·양념은 100g/ml당 나트륨이 수천 mg → 기본 한 스푼 수준
+  if (
+    /장류|양념류|양념장|양념간장|양념초장|초장|초간장|간장|고추장|된장|쌈장|소스|케첩|마요|드레싱|양념$/.test(
+      text,
+    )
+  ) {
+    return 12;
+  }
   if (/김치|깍두기|겉절이|장아찌|절임|피클/.test(text)) return 30;
-  if (/나물|무침|샐러드|생채|겉절이/.test(text)) return 40;
-  if (/국|찌개|탕|전골|스프|수프/.test(text)) return 200;
+  if (/나물|무침|샐러드|생채/.test(text)) return 40;
+  if (/국|찌개|탕|전골|스프|수프|숭늉/.test(text)) return 200;
   if (/밥|라이스|죽|비빔밥|덮밥|볶음밥/.test(text)) return 210;
   if (/면|국수|우동|라면|파스타/.test(text)) return 250;
   if (/우유|요거트|두유/.test(text)) return 200;
-  if (/음료|주스|차$|커피/.test(text)) return 200;
-  if (/과일|사과|바나나|귤|배|포도|수박|딸기/.test(text)) return 120;
-  if (/구이|조림|볶음|튀김|전$|스테이크|불고기|제육|닭|생선|고기/.test(text))
+  if (/주스|쥬스|음료|차$|커피|식혜|수정과/.test(text)) return 200;
+  if (/과일|사과|바나나|귤|한라봉|배|포도|수박|딸기/.test(text)) return 120;
+  if (/구이|조림|볶음|튀김|전$|스테이크|불고기|제육|닭|생선|고기|떡갈비/.test(text))
     return 80;
   if (/빵|떡|과자|케이크|쿠키/.test(text)) return 50;
 
-  // 그 외 MFDS: 100g 전부 넣으면 한 끼가 과도해지므로 70g
   return 70;
 }
 
