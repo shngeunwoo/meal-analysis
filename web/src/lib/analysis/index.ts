@@ -54,7 +54,26 @@ export function sumNutrientsFromFoods(foods: FoodItem[]): NutrientMap {
   return totals;
 }
 
-/** DB 기준 분량(g). MFDS는 보통 100g, 코어(1인분)는 편집용으로 100g으로 둔다. */
+/** 코어(1인분) 음식의 대표 중량(g). 영양치는 이미 1인분 기준이라 이 값이 환산 분모가 된다. */
+const CORE_SERVING_GRAMS: Record<string, number> = {
+  rice: 210,
+  soup: 200,
+  main_meat: 120,
+  fried_chicken: 150,
+  fish: 100,
+  side_veg: 50,
+  salad: 120,
+  noodle: 300,
+  bowl: 400,
+  fruit: 150,
+  snack: 50,
+  milk: 200,
+  yogurt: 100,
+  juice: 200,
+  drink: 200,
+};
+
+/** DB 기준 분량(g). MFDS는 meta.basis(보통 100g), 코어는 1인분 대표 중량. */
 export function servingBasisGrams(food: FoodItem): number {
   const basis = food.meta?.basis;
   if (typeof basis === "string") {
@@ -64,7 +83,41 @@ export function servingBasisGrams(food: FoodItem): number {
       if (Number.isFinite(n) && n > 0) return n;
     }
   }
-  return 100;
+  return CORE_SERVING_GRAMS[food.id] ?? 100;
+}
+
+/**
+ * 화면 기본 섭취량(g).
+ * MFDS(100g 기준)는 급식·반찬 현실을 반영해 더 작은 기본값을 쓴다.
+ * 코어는 1인분 대표 중량(= servingBasisGrams)을 쓴다.
+ */
+export function defaultIntakeGrams(food: FoodItem): number {
+  const basis = servingBasisGrams(food);
+  const hasMfdsBasis =
+    typeof food.meta?.basis === "string" && /\d+\s*g/i.test(food.meta.basis);
+
+  if (!hasMfdsBasis) {
+    return CORE_SERVING_GRAMS[food.id] ?? basis;
+  }
+
+  const name = food.name;
+  const cat = `${food.meta?.categoryLarge ?? ""} ${food.meta?.categoryMid ?? ""}`;
+  const text = `${name} ${cat}`;
+
+  if (/김치|깍두기|겉절이|장아찌|절임|피클/.test(text)) return 30;
+  if (/나물|무침|샐러드|생채|겉절이/.test(text)) return 40;
+  if (/국|찌개|탕|전골|스프|수프/.test(text)) return 200;
+  if (/밥|라이스|죽|비빔밥|덮밥|볶음밥/.test(text)) return 210;
+  if (/면|국수|우동|라면|파스타/.test(text)) return 250;
+  if (/우유|요거트|두유/.test(text)) return 200;
+  if (/음료|주스|차$|커피/.test(text)) return 200;
+  if (/과일|사과|바나나|귤|배|포도|수박|딸기/.test(text)) return 120;
+  if (/구이|조림|볶음|튀김|전$|스테이크|불고기|제육|닭|생선|고기/.test(text))
+    return 80;
+  if (/빵|떡|과자|케이크|쿠키/.test(text)) return 50;
+
+  // 그 외 MFDS: 100g 전부 넣으면 한 끼가 과도해지므로 70g
+  return 70;
 }
 
 /** 기준 분량 대비 섭취량(g)으로 영양을 비례 환산한다. */

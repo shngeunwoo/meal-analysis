@@ -2,7 +2,7 @@
 
 import { addAliasAction, type AliasState, type AnalyzeResultPayload } from "@/app/actions";
 import { FOODS } from "@/data/foods";
-import { getMealTargets, MEAL_LABEL, servingBasisGrams } from "@/lib/analysis";
+import { getMealTargets, MEAL_LABEL, defaultIntakeGrams, servingBasisGrams } from "@/lib/analysis";
 import { foodEvidenceLine } from "@/lib/foodEvidence";
 import { NUTRIENT_LABEL_KO } from "@/lib/nutrientLabels";
 import { matchNeedsConfirmation } from "@/lib/match";
@@ -326,7 +326,7 @@ export function AnalyzeResults({ data }: { data: AnalyzeResultPayload }) {
     setManualFoods({});
     const next: Record<string, number> = {};
     for (const m of data.matches) {
-      if (m.food) next[m.query] = servingBasisGrams(m.food);
+      if (m.food) next[m.query] = defaultIntakeGrams(m.food);
     }
     setGramsByQuery(next);
   }, [data.matches, data.tokenCount, data.extractionSource]);
@@ -459,7 +459,7 @@ export function AnalyzeResults({ data }: { data: AnalyzeResultPayload }) {
               excluded={excludedQueries.has(m.query)}
               grams={
                 gramsByQuery[m.query] ??
-                (m.food ? servingBasisGrams(m.food) : 100)
+                (m.food ? defaultIntakeGrams(m.food) : 100)
               }
               onConfirm={() => {
                 setConfirmedQueries((prev) => new Set(prev).add(m.query));
@@ -482,7 +482,7 @@ export function AnalyzeResults({ data }: { data: AnalyzeResultPayload }) {
                 setConfirmedQueries((prev) => new Set(prev).add(m.query));
                 setGramsByQuery((prev) => ({
                   ...prev,
-                  [m.query]: servingBasisGrams(food),
+                  [m.query]: defaultIntakeGrams(food),
                 }));
               }}
               onGramsChange={(grams) => {
@@ -507,6 +507,13 @@ export function AnalyzeResults({ data }: { data: AnalyzeResultPayload }) {
           <p className="mt-4 text-xs text-stone-500">
             포함 {analysis.includedCount}개 항목
           </p>
+          {(analysis.over.sodium_mg ?? 0) > (targets.sodium_mg ?? 0) && (
+            <p className="mt-2 text-xs leading-relaxed text-amber-800 dark:text-amber-200">
+              나트륨이 크게 초과했다면 김치·국·조림 분량(g)을 줄여 보세요. 한식
+              급식은 중식 목표(하루의 약 35%)를 넘기기 쉽고, DB는 참고용
+              근사치입니다.
+            </p>
+          )}
         </div>
 
         <div className="space-y-4">

@@ -2,7 +2,7 @@ import {
   excessVsTarget,
   getMealTargets,
   scaleFoodByGrams,
-  servingBasisGrams,
+  defaultIntakeGrams,
   shortageVsTarget,
   sumNutrientsFromFoods,
 } from "@/lib/analysis";
@@ -47,8 +47,7 @@ function includedFoodsScaled(
       row.confidence >= AUTO_CONFIRM_CONFIDENCE ||
       userConfirmedQueries.has(row.query);
     if (!included) continue;
-    const base = servingBasisGrams(row.food);
-    const grams = gramsByQuery[row.query] ?? base;
+    const grams = gramsByQuery[row.query] ?? defaultIntakeGrams(row.food);
     list.push(scaleFoodByGrams(row.food, grams));
   }
   return list;

@@ -38,9 +38,11 @@ describe("computeMealAnalysis", () => {
     const rows: FoodMatchRow[] = [
       { query: "밥", food: rice, confidence: 1, needsConfirmation: false },
     ];
-    const base = computeMealAnalysis(rows, new Set(), FOODS);
+    const base = computeMealAnalysis(rows, new Set(), FOODS, undefined, {
+      밥: 210,
+    });
     const double = computeMealAnalysis(rows, new Set(), FOODS, undefined, {
-      밥: 200,
+      밥: 420,
     });
     expect(double.totals.energy_kcal).toBeCloseTo(
       (base.totals.energy_kcal ?? 0) * 2,
