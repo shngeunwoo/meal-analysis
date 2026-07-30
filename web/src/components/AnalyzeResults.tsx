@@ -1,14 +1,14 @@
 "use client";
 
-import { addAliasFormAction, type AnalyzeResultPayload } from "@/app/actions";
+import { addAliasAction, type AliasState, type AnalyzeResultPayload } from "@/app/actions";
 import { FOODS } from "@/data/foods";
 import { getMealTargets, MEAL_LABEL } from "@/lib/analysis";
 import { foodEvidenceLine } from "@/lib/foodEvidence";
 import { NUTRIENT_LABEL_KO } from "@/lib/nutrientLabels";
 import { matchNeedsConfirmation } from "@/lib/match";
 import { computeMealAnalysis } from "@/lib/pipeline/computeMealAnalysis";
-import type { FoodMatchRow, NutrientId, NutrientMap } from "@/types";
-import { useEffect, useMemo, useState } from "react";
+import type { FoodItem, FoodMatchRow, NutrientId, NutrientMap } from "@/types";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 
 const NUTRIENT_ORDER: NutrientId[] = [
   "energy_kcal",
@@ -138,6 +138,72 @@ function PartialNutrientList({
   );
 }
 
+function AliasMapForm({
+  query,
+  foodOptions,
+  onMapped,
+}: {
+  query: string;
+  foodOptions: { id: string; name: string }[];
+  onMapped: (food: FoodItem) => void;
+}) {
+  const [state, formAction, pending] = useActionState(
+    addAliasAction,
+    null as AliasState | null,
+  );
+  const appliedKey = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!state?.ok) return;
+    const key = `${state.query}:${state.foodId}`;
+    if (appliedKey.current === key) return;
+    appliedKey.current = key;
+    const food = FOODS.find((f) => f.id === state.foodId);
+    if (food) onMapped(food);
+  }, [state, onMapped]);
+
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <form action={formAction} className="flex flex-wrap items-center gap-2">
+        <input type="hidden" name="query" value={query} />
+        <select
+          name="foodId"
+          required
+          className="rounded-lg border border-stone-200 bg-white px-2 py-1 text-xs dark:border-stone-700 dark:bg-stone-950"
+          defaultValue=""
+        >
+          <option value="" disabled>
+            종류 선택
+          </option>
+          {foodOptions.map((o) => (
+            <option key={o.id} value={o.id}>
+              {o.name}
+            </option>
+          ))}
+        </select>
+        <button
+          type="submit"
+          disabled={pending}
+          className="btn-secondary px-2 py-1 text-xs disabled:opacity-60"
+        >
+          {pending ? "저장 중…" : "별칭 저장"}
+        </button>
+      </form>
+      {state && (
+        <p
+          className={`text-[11px] ${
+            state.ok
+              ? "text-brand-700 dark:text-brand-300"
+              : "text-rose-600 dark:text-rose-400"
+          }`}
+        >
+          {state.message}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function MatchRow({
   row,
   foodOptions,
@@ -145,6 +211,7 @@ function MatchRow({
   excluded,
   onConfirm,
   onExclude,
+  onMapped,
 }: {
   row: FoodMatchRow;
   foodOptions: { id: string; name: string }[];
@@ -152,6 +219,7 @@ function MatchRow({
   excluded: boolean;
   onConfirm: () => void;
   onExclude: () => void;
+  onMapped: (food: FoodItem) => void;
 }) {
   const pending = matchNeedsConfirmation(row);
   const evidence = foodEvidenceLine(row.food);
@@ -186,26 +254,11 @@ function MatchRow({
         ) : (
           <div className="flex flex-wrap items-center gap-2">
             <span className="badge-warm">DB 없음</span>
-            <form action={addAliasFormAction} className="flex flex-wrap items-center gap-2">
-              <input type="hidden" name="query" value={row.query} />
-              <select
-                name="foodId"
-                className="rounded-lg border border-stone-200 bg-white px-2 py-1 text-xs dark:border-stone-700 dark:bg-stone-950"
-                defaultValue=""
-              >
-                <option value="" disabled>
-                  매핑할 음식 선택
-                </option>
-                {foodOptions.map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {o.name}
-                  </option>
-                ))}
-              </select>
-              <button type="submit" className="btn-secondary px-2 py-1 text-xs">
-                별칭 저장
-              </button>
-            </form>
+            <AliasMapForm
+              query={row.query}
+              foodOptions={foodOptions}
+              onMapped={onMapped}
+            />
           </div>
         )}
       </div>
@@ -240,15 +293,33 @@ function MatchRow({
 export function AnalyzeResults({ data }: { data: AnalyzeResultPayload }) {
   const [confirmedQueries, setConfirmedQueries] = useState<Set<string>>(new Set());
   const [excludedQueries, setExcludedQueries] = useState<Set<string>>(new Set());
+  const [manualFoods, setManualFoods] = useState<Record<string, FoodItem>>({});
 
   useEffect(() => {
     setConfirmedQueries(new Set());
     setExcludedQueries(new Set());
+    setManualFoods({});
   }, [data.matches, data.tokenCount, data.extractionSource]);
 
+  const matches = useMemo(
+    () =>
+      data.matches.map((m) => {
+        const food = manualFoods[m.query];
+        if (!food) return m;
+        return {
+          query: m.query,
+          food,
+          confidence: 1,
+          needsConfirmation: false,
+          aiMatched: false,
+        };
+      }),
+    [data.matches, manualFoods],
+  );
+
   const analysis = useMemo(
-    () => computeMealAnalysis(data.matches, confirmedQueries, FOODS, data.mealCode),
-    [data.matches, confirmedQueries, data.mealCode],
+    () => computeMealAnalysis(matches, confirmedQueries, FOODS, data.mealCode),
+    [matches, confirmedQueries, data.mealCode],
   );
 
   const targets = useMemo(() => getMealTargets(data.mealCode), [data.mealCode]);
@@ -342,7 +413,7 @@ export function AnalyzeResults({ data }: { data: AnalyzeResultPayload }) {
           매칭된 음식
         </h3>
         <ul className="space-y-2">
-          {data.matches.map((m, i) => (
+          {matches.map((m, i) => (
             <MatchRow
               key={`${m.query}-${i}`}
               row={m}
@@ -364,6 +435,10 @@ export function AnalyzeResults({ data }: { data: AnalyzeResultPayload }) {
                   next.delete(m.query);
                   return next;
                 });
+              }}
+              onMapped={(food) => {
+                setManualFoods((prev) => ({ ...prev, [m.query]: food }));
+                setConfirmedQueries((prev) => new Set(prev).add(m.query));
               }}
             />
           ))}

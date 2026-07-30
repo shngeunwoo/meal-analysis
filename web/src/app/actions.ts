@@ -1,13 +1,12 @@
 "use server";
 
-import { getFoods } from "@/data/getFoods.server";
+import { getCoreFoods } from "@/data/getFoods.server";
 import { extractFoodNamesWithAi } from "@/lib/ai/extractFoods";
+import { upsertUserAlias } from "@/lib/aliases/userAliases.server";
 import { buildFoodCandidates } from "@/lib/parse";
 import { runMealAnalysis, type MealAnalysisPayload } from "@/lib/pipeline/runMealAnalysis";
 import { enforceRateLimits } from "@/lib/rateLimit/server";
 import { revalidatePath } from "next/cache";
-import fs from "node:fs/promises";
-import path from "node:path";
 
 export type AnalyzeResultPayload = MealAnalysisPayload;
 
@@ -55,7 +54,13 @@ export async function analyzeMealAction(
 }
 
 export type AliasState =
-  | { ok: true; message: string }
+  | {
+      ok: true;
+      message: string;
+      foodId: string;
+      foodName: string;
+      query: string;
+    }
   | { ok: false; message: string };
 
 async function persistAlias(query: string, foodId: string): Promise<AliasState> {
@@ -63,29 +68,19 @@ async function persistAlias(query: string, foodId: string): Promise<AliasState> 
     return { ok: false, message: "별칭 또는 대상 음식이 비어 있습니다." };
   }
 
-  const aliasPath = path.join(process.cwd(), "src", "data", "user-aliases.json");
-
   try {
-    const foods = await getFoods();
-    const target = foods.find((f) => f.id === foodId);
+    const target = getCoreFoods().find((f) => f.id === foodId);
     if (!target) return { ok: false, message: "대상 음식을 찾지 못했습니다." };
 
-    // { "아로니아쥬스": "MFDS_ID", ... }
-    let map: Record<string, string> = {};
-    try {
-      const raw = await fs.readFile(aliasPath, "utf-8");
-      const parsed = JSON.parse(raw) as unknown;
-      if (parsed && typeof parsed === "object") {
-        map = parsed as Record<string, string>;
-      }
-    } catch {
-      map = {};
-    }
-
-    map[query] = foodId;
-    await fs.writeFile(aliasPath, JSON.stringify(map, null, 2) + "\n", "utf-8");
+    await upsertUserAlias(query, foodId);
     revalidatePath("/");
-    return { ok: true, message: `저장됨: "${query}" → ${target.name}` };
+    return {
+      ok: true,
+      message: `저장됨: "${query}" → ${target.name}`,
+      foodId: target.id,
+      foodName: target.name,
+      query,
+    };
   } catch (e) {
     const msg = e instanceof Error ? e.message : "저장 실패";
     return { ok: false, message: `저장에 실패했습니다: ${msg}` };
