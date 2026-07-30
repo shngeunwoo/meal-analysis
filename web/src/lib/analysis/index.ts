@@ -54,6 +54,35 @@ export function sumNutrientsFromFoods(foods: FoodItem[]): NutrientMap {
   return totals;
 }
 
+/** DB 기준 분량(g). MFDS는 보통 100g, 코어(1인분)는 편집용으로 100g으로 둔다. */
+export function servingBasisGrams(food: FoodItem): number {
+  const basis = food.meta?.basis;
+  if (typeof basis === "string") {
+    const m = basis.match(/(\d+(?:\.\d+)?)\s*g/i);
+    if (m) {
+      const n = Number(m[1]);
+      if (Number.isFinite(n) && n > 0) return n;
+    }
+  }
+  return 100;
+}
+
+/** 기준 분량 대비 섭취량(g)으로 영양을 비례 환산한다. */
+export function scaleFoodByGrams(food: FoodItem, grams: number): FoodItem {
+  const base = servingBasisGrams(food);
+  const g = Number.isFinite(grams) && grams > 0 ? grams : base;
+  const factor = g / base;
+  if (Math.abs(factor - 1) < 1e-9) return food;
+
+  const nutrientsPerServing: NutrientMap = {};
+  for (const [key, value] of Object.entries(food.nutrientsPerServing)) {
+    if (typeof value === "number") {
+      nutrientsPerServing[key] = Math.round(value * factor * 100) / 100;
+    }
+  }
+  return { ...food, nutrientsPerServing };
+}
+
 /** 목표보다 부족한 양(양수), 목표보다 많으면 short에는 넣지 않음 */
 export function shortageVsTarget(
   totals: NutrientMap,

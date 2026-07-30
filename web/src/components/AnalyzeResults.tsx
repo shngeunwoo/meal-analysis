@@ -2,7 +2,7 @@
 
 import { addAliasAction, type AliasState, type AnalyzeResultPayload } from "@/app/actions";
 import { FOODS } from "@/data/foods";
-import { getMealTargets, MEAL_LABEL } from "@/lib/analysis";
+import { getMealTargets, MEAL_LABEL, servingBasisGrams } from "@/lib/analysis";
 import { foodEvidenceLine } from "@/lib/foodEvidence";
 import { NUTRIENT_LABEL_KO } from "@/lib/nutrientLabels";
 import { matchNeedsConfirmation } from "@/lib/match";
@@ -209,20 +209,25 @@ function MatchRow({
   foodOptions,
   confirmed,
   excluded,
+  grams,
   onConfirm,
   onExclude,
   onMapped,
+  onGramsChange,
 }: {
   row: FoodMatchRow;
   foodOptions: { id: string; name: string }[];
   confirmed: boolean;
   excluded: boolean;
+  grams: number;
   onConfirm: () => void;
   onExclude: () => void;
   onMapped: (food: FoodItem) => void;
+  onGramsChange: (grams: number) => void;
 }) {
   const pending = matchNeedsConfirmation(row);
   const evidence = foodEvidenceLine(row.food);
+  const basis = row.food ? servingBasisGrams(row.food) : 100;
 
   return (
     <li className="rounded-xl border border-brand-100/80 bg-gradient-to-r from-white to-brand-50/30 px-4 py-3 dark:border-brand-900/30 dark:from-stone-900/50 dark:to-brand-950/20">
@@ -250,6 +255,25 @@ function MatchRow({
             {evidence && (
               <p className="mt-0.5 text-xs text-stone-500">근거: {evidence}</p>
             )}
+            <label className="mt-2 inline-flex items-center gap-1.5 text-xs text-stone-600 dark:text-stone-400">
+              <span className="font-medium">분량</span>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={2000}
+                step={1}
+                value={grams}
+                onChange={(e) => {
+                  const n = Number(e.target.value);
+                  if (!Number.isFinite(n)) return;
+                  onGramsChange(Math.min(2000, Math.max(1, Math.round(n))));
+                }}
+                className="w-20 rounded-lg border border-stone-200 bg-white px-2 py-1 text-right tabular-nums text-stone-800 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-100"
+              />
+              <span>g</span>
+              <span className="text-[11px] text-stone-400">(기준 {basis}g)</span>
+            </label>
           </div>
         ) : (
           <div className="flex flex-wrap items-center gap-2">
@@ -294,11 +318,17 @@ export function AnalyzeResults({ data }: { data: AnalyzeResultPayload }) {
   const [confirmedQueries, setConfirmedQueries] = useState<Set<string>>(new Set());
   const [excludedQueries, setExcludedQueries] = useState<Set<string>>(new Set());
   const [manualFoods, setManualFoods] = useState<Record<string, FoodItem>>({});
+  const [gramsByQuery, setGramsByQuery] = useState<Record<string, number>>({});
 
   useEffect(() => {
     setConfirmedQueries(new Set());
     setExcludedQueries(new Set());
     setManualFoods({});
+    const next: Record<string, number> = {};
+    for (const m of data.matches) {
+      if (m.food) next[m.query] = servingBasisGrams(m.food);
+    }
+    setGramsByQuery(next);
   }, [data.matches, data.tokenCount, data.extractionSource]);
 
   const matches = useMemo(
@@ -318,8 +348,15 @@ export function AnalyzeResults({ data }: { data: AnalyzeResultPayload }) {
   );
 
   const analysis = useMemo(
-    () => computeMealAnalysis(matches, confirmedQueries, FOODS, data.mealCode),
-    [matches, confirmedQueries, data.mealCode],
+    () =>
+      computeMealAnalysis(
+        matches,
+        confirmedQueries,
+        FOODS,
+        data.mealCode,
+        gramsByQuery,
+      ),
+    [matches, confirmedQueries, data.mealCode, gramsByQuery],
   );
 
   const targets = useMemo(() => getMealTargets(data.mealCode), [data.mealCode]);
@@ -420,6 +457,10 @@ export function AnalyzeResults({ data }: { data: AnalyzeResultPayload }) {
               foodOptions={data.foodOptions}
               confirmed={confirmedQueries.has(m.query)}
               excluded={excludedQueries.has(m.query)}
+              grams={
+                gramsByQuery[m.query] ??
+                (m.food ? servingBasisGrams(m.food) : 100)
+              }
               onConfirm={() => {
                 setConfirmedQueries((prev) => new Set(prev).add(m.query));
                 setExcludedQueries((prev) => {
@@ -439,6 +480,13 @@ export function AnalyzeResults({ data }: { data: AnalyzeResultPayload }) {
               onMapped={(food) => {
                 setManualFoods((prev) => ({ ...prev, [m.query]: food }));
                 setConfirmedQueries((prev) => new Set(prev).add(m.query));
+                setGramsByQuery((prev) => ({
+                  ...prev,
+                  [m.query]: servingBasisGrams(food),
+                }));
+              }}
+              onGramsChange={(grams) => {
+                setGramsByQuery((prev) => ({ ...prev, [m.query]: grams }));
               }}
             />
           ))}

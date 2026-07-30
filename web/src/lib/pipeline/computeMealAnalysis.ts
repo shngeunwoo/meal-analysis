@@ -1,12 +1,15 @@
 import {
   excessVsTarget,
   getMealTargets,
+  scaleFoodByGrams,
+  servingBasisGrams,
   shortageVsTarget,
   sumNutrientsFromFoods,
 } from "@/lib/analysis";
 import {
-  expandMatchedFoods,
+  AUTO_CONFIRM_CONFIDENCE,
   matchNeedsConfirmation,
+  MIN_MATCH_CONFIDENCE,
 } from "@/lib/match";
 import { recommendNextMeal, type Recommendation } from "@/lib/recommend";
 import type { FoodItem, FoodMatchRow, NutrientId, NutrientMap } from "@/types";
@@ -32,13 +35,37 @@ function catalogForRecommend(
   return [...byId.values()];
 }
 
+function includedFoodsScaled(
+  matches: FoodMatchRow[],
+  userConfirmedQueries: ReadonlySet<string>,
+  gramsByQuery: Readonly<Record<string, number>>,
+): FoodItem[] {
+  const list: FoodItem[] = [];
+  for (const row of matches) {
+    if (!row.food || row.confidence < MIN_MATCH_CONFIDENCE) continue;
+    const included =
+      row.confidence >= AUTO_CONFIRM_CONFIDENCE ||
+      userConfirmedQueries.has(row.query);
+    if (!included) continue;
+    const base = servingBasisGrams(row.food);
+    const grams = gramsByQuery[row.query] ?? base;
+    list.push(scaleFoodByGrams(row.food, grams));
+  }
+  return list;
+}
+
 export function computeMealAnalysis(
   matches: FoodMatchRow[],
   userConfirmedQueries: ReadonlySet<string>,
   recommendCatalog: FoodItem[],
   mealCode?: string,
+  gramsByQuery: Readonly<Record<string, number>> = {},
 ): MealAnalysisResult {
-  const included = expandMatchedFoods(matches, userConfirmedQueries);
+  const included = includedFoodsScaled(
+    matches,
+    userConfirmedQueries,
+    gramsByQuery,
+  );
   const totals = sumNutrientsFromFoods(included);
   const targets = getMealTargets(mealCode);
   const short = shortageVsTarget(totals, targets);

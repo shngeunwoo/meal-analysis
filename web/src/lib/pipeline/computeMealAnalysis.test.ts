@@ -32,4 +32,19 @@ describe("computeMealAnalysis", () => {
     expect(confirmed.includedCount).toBe(1);
     expect(confirmed.pendingConfirmationCount).toBe(0);
   });
+
+  it("분량(g)을 바꾸면 합산 열량이 비례한다", () => {
+    const rice = FOODS.find((f) => f.id === "rice")!;
+    const rows: FoodMatchRow[] = [
+      { query: "밥", food: rice, confidence: 1, needsConfirmation: false },
+    ];
+    const base = computeMealAnalysis(rows, new Set(), FOODS);
+    const double = computeMealAnalysis(rows, new Set(), FOODS, undefined, {
+      밥: 200,
+    });
+    expect(double.totals.energy_kcal).toBeCloseTo(
+      (base.totals.energy_kcal ?? 0) * 2,
+      5,
+    );
+  });
 });
