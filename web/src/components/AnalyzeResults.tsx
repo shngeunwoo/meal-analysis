@@ -3,6 +3,7 @@
 import { addAliasAction, type AliasState, type AnalyzeResultPayload } from "@/app/actions";
 import { FOODS } from "@/data/foods";
 import { getMealTargets, MEAL_LABEL, defaultIntakeGrams, servingBasisGrams } from "@/lib/analysis";
+import { NeisMealCard } from "@/components/NeisMealCard";
 import { foodEvidenceLine } from "@/lib/foodEvidence";
 import { NUTRIENT_LABEL_KO } from "@/lib/nutrientLabels";
 import { matchNeedsConfirmation } from "@/lib/match";
@@ -417,19 +418,10 @@ export function AnalyzeResults({ data }: { data: AnalyzeResultPayload }) {
       </div>
 
       {data.neisMeal && (
-        <div className="result-panel">
-          <p className="font-medium text-stone-800 dark:text-stone-100">
-            {data.neisMeal.schoolName} · {data.neisMeal.date} · {data.neisMeal.mealName}
-          </p>
-          {data.neisMeal.calInfo && (
-            <p className="mt-1 text-xs text-stone-600 dark:text-stone-400">
-              급식 제공 열량(나이스): {data.neisMeal.calInfo}
-            </p>
-          )}
-          <p className="mt-1 text-xs text-stone-500">
-            출처: {data.neisMeal.source} · 아래 합산은 내부 DB 추정치입니다.
-          </p>
-        </div>
+        <NeisMealCard
+          meal={data.neisMeal}
+          estimatedKcal={analysis.totals.energy_kcal ?? 0}
+        />
       )}
 
       {analysis.pendingConfirmationCount > 0 && (

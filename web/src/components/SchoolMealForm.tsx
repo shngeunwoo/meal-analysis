@@ -6,6 +6,7 @@ import {
   type SchoolSearchState,
 } from "@/app/neis-actions";
 import { AnalyzeResults } from "@/components/AnalyzeResults";
+import { formatMealDate } from "@/components/NeisMealCard";
 import {
   SchoolMealHistory,
   SchoolSearchHistory,
@@ -31,6 +32,16 @@ function todayYmd(): string {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
+}
+
+function shiftYmd(ymd: string, days: number): string {
+  const m = ymd.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const d = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date();
+  d.setDate(d.getDate() + days);
+  const y = d.getFullYear();
+  const mo = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${mo}-${day}`;
 }
 
 function schoolKey(s: NeisSchool): string {
@@ -272,14 +283,44 @@ export function SchoolMealForm({ embedded = false }: SchoolMealFormProps) {
             <label htmlFor="mlsvYmd" className="field-label">
               급식 날짜
             </label>
-            <input
-              id="mlsvYmd"
-              name="mlsvYmd"
-              type="date"
-              value={mlsvYmd}
-              onChange={(e) => setMlsvYmd(e.target.value)}
-              className="input-field"
-            />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setMlsvYmd((v) => shiftYmd(v, -1))}
+                className="btn-secondary shrink-0 px-3"
+                aria-label="전날"
+              >
+                ◀
+              </button>
+              <input
+                id="mlsvYmd"
+                name="mlsvYmd"
+                type="date"
+                value={mlsvYmd}
+                onChange={(e) => setMlsvYmd(e.target.value)}
+                className="input-field min-w-0 flex-1"
+              />
+              <button
+                type="button"
+                onClick={() => setMlsvYmd((v) => shiftYmd(v, 1))}
+                className="btn-secondary shrink-0 px-3"
+                aria-label="다음날"
+              >
+                ▶
+              </button>
+            </div>
+            <p className="mt-1.5 flex items-center gap-2 text-xs text-stone-500">
+              <span>{formatMealDate(mlsvYmd)}</span>
+              {mlsvYmd !== todayYmd() && (
+                <button
+                  type="button"
+                  onClick={() => setMlsvYmd(todayYmd())}
+                  className="font-medium text-brand-700 hover:underline dark:text-brand-400"
+                >
+                  오늘로
+                </button>
+              )}
+            </p>
           </div>
           <div>
             <label htmlFor="mmealScCode" className="field-label">

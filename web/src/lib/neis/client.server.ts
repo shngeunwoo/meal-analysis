@@ -133,3 +133,17 @@ export async function fetchNeisMeal(
 
   return rows[0] ?? null;
 }
+
+/** 해당 날짜의 모든 끼니 (조식·중식·석식…) */
+export async function fetchNeisMealsForDate(
+  atptCode: string,
+  sdSchulCode: string,
+  mlsvYmd: string,
+): Promise<NeisMealRow[]> {
+  const { rows } = await neisGet<NeisMealRow>("mealServiceDietInfo", {
+    ATPT_OFCDC_SC_CODE: atptCode,
+    SD_SCHUL_CODE: sdSchulCode,
+    MLSV_YMD: mlsvYmd.replace(/-/g, ""),
+  });
+  return rows;
+}

@@ -1,7 +1,17 @@
 "use server";
 
-import { fetchNeisMeal, searchNeisSchools } from "@/lib/neis/client.server";
+import {
+  fetchNeisMeal,
+  fetchNeisMealsForDate,
+  searchNeisSchools,
+} from "@/lib/neis/client.server";
 import { parseNeisDishNames } from "@/lib/neis/parseDishNames";
+import {
+  parseNeisCalories,
+  parseNeisDishes,
+  parseNeisNutrients,
+  parseNeisOrigins,
+} from "@/lib/neis/parseMealInfo";
 import type { NeisSchool } from "@/lib/neis/types";
 import { enforceRateLimits } from "@/lib/rateLimit/server";
 import { runMealAnalysis } from "@/lib/pipeline/runMealAnalysis";
@@ -71,10 +81,18 @@ export async function analyzeSchoolMealAction(
   try {
     const row = await fetchNeisMeal(atptCode, sdSchulCode, mlsvYmd, mmealScCode);
     if (!row?.DDISH_NM) {
+      const others = await fetchNeisMealsForDate(atptCode, sdSchulCode, mlsvYmd).catch(
+        () => [],
+      );
+      const available = others
+        .filter((r) => r.DDISH_NM)
+        .map((r) => r.MMEAL_SC_NM || r.MMEAL_SC_CODE);
       return {
         ok: false,
         message:
-          "해당 날짜·끼니에 급식 정보가 없습니다. (주말·방학·미제공일일 수 있습니다)",
+          available.length > 0
+            ? `이 날짜에는 선택한 끼니가 없습니다. 제공된 끼니: ${available.join(", ")}`
+            : "해당 날짜에 급식 정보가 없습니다. (주말·공휴일·방학·미제공일일 수 있습니다)",
       };
     }
 
@@ -95,6 +113,10 @@ export async function analyzeSchoolMealAction(
         mealName: row.MMEAL_SC_NM ?? "",
         calInfo: row.CAL_INFO,
         ntrInfo: row.NTR_INFO,
+        dishes: parseNeisDishes(row.DDISH_NM),
+        kcal: parseNeisCalories(row.CAL_INFO),
+        nutrients: parseNeisNutrients(row.NTR_INFO),
+        origins: parseNeisOrigins(row.ORPLC_INFO),
         source: "나이스 교육정보 개방 포털",
       },
       evidenceExtra: `입력: ${schoolName} ${dateLabel} 급식식단정보 · 메뉴 ${candidates.length}개`,

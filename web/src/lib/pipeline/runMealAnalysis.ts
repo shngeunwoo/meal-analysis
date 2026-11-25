@@ -4,6 +4,11 @@ import { MEAL_LABEL } from "@/lib/analysis";
 import { hasMatchableFood, matchFoods } from "@/lib/match";
 import { aiReMatchLowConfidence } from "@/lib/match/aiReMatch.server";
 import { computeMealAnalysis } from "@/lib/pipeline/computeMealAnalysis";
+import type {
+  NeisDish,
+  NeisNutrientInfo,
+  NeisOriginInfo,
+} from "@/lib/neis/parseMealInfo";
 import type { Recommendation } from "@/lib/recommend";
 import type { FoodItem, FoodMatchRow, NutrientId, NutrientMap } from "@/types";
 
@@ -28,6 +33,12 @@ export type MealAnalysisPayload = {
     mealName: string;
     calInfo?: string;
     ntrInfo?: string;
+    /** 나이스 원문 요리 목록 (알레르기 번호 포함) */
+    dishes?: NeisDish[];
+    /** 나이스 제공 열량 (kcal) */
+    kcal?: number | null;
+    nutrients?: NeisNutrientInfo[];
+    origins?: NeisOriginInfo[];
     source: string;
   };
 };
