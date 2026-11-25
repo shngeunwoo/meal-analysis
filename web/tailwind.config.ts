@@ -32,7 +32,7 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ["var(--font-noto-sans-kr)", "system-ui", "sans-serif"],
+        sans: ['"Noto Sans KR"', "system-ui", "sans-serif"],
       },
       boxShadow: {
         card: "0 1px 3px 0 rgb(0 0 0 / 0.04), 0 4px 16px -2px rgb(22 101 52 / 0.08)",
