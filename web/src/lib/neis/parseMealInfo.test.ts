@@ -4,6 +4,7 @@ import {
   parseNeisDishes,
   parseNeisNutrients,
   parseNeisOrigins,
+  neisNutrientTotals,
 } from "./parseMealInfo";
 
 describe("parseNeisDishes", () => {
@@ -84,5 +85,18 @@ describe("NEIS 부가 정보", () => {
       { item: "쌀", origin: "국내산" },
       { item: "쇠고기(종류)", origin: "국내산(한우)" },
     ]);
+  });
+
+  it("나이스 영양정보를 앱 영양소로 바꾼다 (단위가 맞는 것만)", () => {
+    const nutrients = parseNeisNutrients(
+      "탄수화물(g) : 112.3<br/>단백질(g) : 35.2<br/>지방(g) : 22.1<br/>칼슘(mg) : 300.1",
+    );
+    expect(neisNutrientTotals(812.4, nutrients)).toEqual({
+      energy_kcal: 812.4,
+      carb_g: 112.3,
+      protein_g: 35.2,
+      fat_g: 22.1,
+    });
+    expect(neisNutrientTotals(null, [])).toEqual({});
   });
 });

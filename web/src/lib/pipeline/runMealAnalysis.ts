@@ -4,10 +4,11 @@ import { MEAL_LABEL } from "@/lib/analysis";
 import { hasMatchableFood, matchFoods } from "@/lib/match";
 import { aiReMatchLowConfidence } from "@/lib/match/aiReMatch.server";
 import { computeMealAnalysis } from "@/lib/pipeline/computeMealAnalysis";
-import type {
-  NeisDish,
-  NeisNutrientInfo,
-  NeisOriginInfo,
+import {
+  neisNutrientTotals,
+  type NeisDish,
+  type NeisNutrientInfo,
+  type NeisOriginInfo,
 } from "@/lib/neis/parseMealInfo";
 import type { Recommendation } from "@/lib/recommend";
 import type { FoodItem, FoodMatchRow, NutrientId, NutrientMap } from "@/types";
@@ -94,7 +95,12 @@ export async function runMealAnalysis(
   const aliasMap = await getUserAliasMap();
   const matches = applyUserAliases(rematched, aliasMap, foodsById);
 
-  if (!hasMatchableFood(matches)) {
+  const officialTotals = options?.neisMeal
+    ? neisNutrientTotals(options.neisMeal.kcal, options.neisMeal.nutrients)
+    : {};
+  const hasOfficial = Object.keys(officialTotals).length > 0;
+
+  if (!hasMatchableFood(matches) && !hasOfficial) {
     return {
       ok: false,
       message:
@@ -102,14 +108,24 @@ export async function runMealAnalysis(
     };
   }
 
-  const analysis = computeMealAnalysis(matches, new Set(), fallbackFoods, options?.mealCode);
+  const analysis = computeMealAnalysis(
+    matches,
+    new Set(),
+    fallbackFoods,
+    options?.mealCode,
+    {},
+    officialTotals,
+  );
 
   const mealLabel = MEAL_LABEL;
   const targetLabel = options?.mealCode
     ? `한 끼 목표(${mealLabel[options.mealCode] ?? options.mealCode})`
     : "일일 목표";
+  const totalsEvidence = hasOfficial
+    ? "열량·탄수화물·단백질·지방: 나이스 제공 영양정보 · 그 외: 신뢰도 70% 이상 또는 확인한 매칭의 DB 추정"
+    : "합산: 신뢰도 70% 이상 또는 확인한 매칭만";
   const baseEvidence =
-    `${targetLabel}: 성인 일반 근사치 · 합산: 신뢰도 70% 이상 또는 확인한 매칭만 · 영양 DB: 식품의약품안전처(MFDS) · DB 없음 항목: AI 재매칭 시도`;
+    `${targetLabel}: 성인 일반 근사치 · ${totalsEvidence} · 영양 DB: 식품의약품안전처(MFDS) · DB 없음 항목: AI 재매칭 시도`;
   const analysisEvidence = options?.evidenceExtra
     ? `${baseEvidence} · ${options.evidenceExtra}`
     : baseEvidence;

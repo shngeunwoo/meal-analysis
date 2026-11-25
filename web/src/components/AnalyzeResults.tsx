@@ -5,6 +5,7 @@ import { FOODS } from "@/data/foods";
 import { getMealTargets, MEAL_LABEL, defaultIntakeGrams, servingBasisGrams } from "@/lib/analysis";
 import { NeisMealCard } from "@/components/NeisMealCard";
 import { foodEvidenceLine } from "@/lib/foodEvidence";
+import { neisNutrientTotals } from "@/lib/neis/parseMealInfo";
 import { NUTRIENT_LABEL_KO } from "@/lib/nutrientLabels";
 import { matchNeedsConfirmation } from "@/lib/match";
 import { computeMealAnalysis } from "@/lib/pipeline/computeMealAnalysis";
@@ -39,10 +40,12 @@ function NutrientBar({
   id,
   value,
   target,
+  official = false,
 }: {
   id: NutrientId;
   value: number;
   target: number;
+  official?: boolean;
 }) {
   const pct = target > 0 ? Math.min((value / target) * 100, 100) : 0;
   const over = value > target;
@@ -51,8 +54,14 @@ function NutrientBar({
   return (
     <div className="space-y-1.5">
       <div className="flex items-baseline justify-between gap-2 text-sm">
-        <span className="font-medium text-stone-700 dark:text-stone-300">
+        <span className="flex items-center gap-1.5 font-medium text-stone-700 dark:text-stone-300">
           {NUTRIENT_LABEL_KO[id]}
+          <span
+            className={official ? "badge-brand" : "badge-muted"}
+            title={official ? "학교가 나이스에 공개한 영양정보" : "메뉴 매칭·분량 기반 DB 추정"}
+          >
+            {official ? "나이스" : "추정"}
+          </span>
         </span>
         <span className="tabular-nums text-stone-600 dark:text-stone-400">
           {formatValue(id, value)}
@@ -84,9 +93,11 @@ function NutrientBar({
 function TotalsTable({
   totals,
   targets,
+  officialIds,
 }: {
   totals: NutrientMap;
   targets: Record<NutrientId, number>;
+  officialIds: readonly NutrientId[];
 }) {
   return (
     <div className="space-y-4">
@@ -96,6 +107,7 @@ function TotalsTable({
           id={id}
           value={totals[id] ?? 0}
           target={targets[id]}
+          official={officialIds.includes(id)}
         />
       ))}
     </div>
@@ -348,6 +360,17 @@ export function AnalyzeResults({ data }: { data: AnalyzeResultPayload }) {
     [data.matches, manualFoods],
   );
 
+  const neisTotals = useMemo(
+    () =>
+      data.neisMeal
+        ? neisNutrientTotals(data.neisMeal.kcal, data.neisMeal.nutrients)
+        : {},
+    [data.neisMeal],
+  );
+  const hasNeisTotals = Object.keys(neisTotals).length > 0;
+  const [useNeisTotals, setUseNeisTotals] = useState(true);
+  const applyNeis = hasNeisTotals && useNeisTotals;
+
   const analysis = useMemo(
     () =>
       computeMealAnalysis(
@@ -356,8 +379,9 @@ export function AnalyzeResults({ data }: { data: AnalyzeResultPayload }) {
         FOODS,
         data.mealCode,
         gramsByQuery,
+        applyNeis ? neisTotals : {},
       ),
-    [matches, confirmedQueries, data.mealCode, gramsByQuery],
+    [matches, confirmedQueries, data.mealCode, gramsByQuery, applyNeis, neisTotals],
   );
 
   const targets = useMemo(() => getMealTargets(data.mealCode), [data.mealCode]);
@@ -420,7 +444,7 @@ export function AnalyzeResults({ data }: { data: AnalyzeResultPayload }) {
       {data.neisMeal && (
         <NeisMealCard
           meal={data.neisMeal}
-          estimatedKcal={analysis.totals.energy_kcal ?? 0}
+          estimatedKcal={analysis.estimatedTotals.energy_kcal ?? 0}
         />
       )}
 
@@ -492,10 +516,49 @@ export function AnalyzeResults({ data }: { data: AnalyzeResultPayload }) {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="result-panel">
-          <h3 className="mb-4 text-sm font-semibold text-stone-700 dark:text-stone-300">
-            합산 섭취 (추정)
-          </h3>
-          <TotalsTable totals={analysis.totals} targets={targets} />
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-sm font-semibold text-stone-700 dark:text-stone-300">
+              {applyNeis ? "합산 섭취 (나이스 영양정보)" : "합산 섭취 (추정)"}
+            </h3>
+            {hasNeisTotals && (
+              <div
+                role="group"
+                aria-label="계산 기준"
+                className="inline-flex rounded-lg bg-stone-100 p-0.5 text-xs dark:bg-stone-800"
+              >
+                {[
+                  { on: true, label: "나이스 기준" },
+                  { on: false, label: "DB 추정" },
+                ].map((opt) => (
+                  <button
+                    key={opt.label}
+                    type="button"
+                    aria-pressed={useNeisTotals === opt.on}
+                    onClick={() => setUseNeisTotals(opt.on)}
+                    className={`rounded-md px-2.5 py-1 font-medium transition ${
+                      useNeisTotals === opt.on
+                        ? "bg-white text-stone-900 shadow-sm dark:bg-stone-950 dark:text-stone-100"
+                        : "text-stone-500 hover:text-stone-800 dark:hover:text-stone-200"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <TotalsTable
+            totals={analysis.totals}
+            targets={targets}
+            officialIds={analysis.officialIds}
+          />
+          {applyNeis && (
+            <p className="mt-3 text-xs leading-relaxed text-stone-500">
+              열량·탄수화물·단백질·지방은 학교가 공개한 1인분 제공량입니다. 나이스에 없는
+              나트륨·식이섬유만 메뉴 매칭으로 추정하므로, 분량(g)을 바꾸면 그 두 항목만
+              달라집니다.
+            </p>
+          )}
           <p className="mt-4 text-xs text-stone-500">
             포함 {analysis.includedCount}개 항목
           </p>

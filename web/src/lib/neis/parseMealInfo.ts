@@ -1,3 +1,5 @@
+import type { NutrientId } from "@/types";
+
 /**
  * 나이스 급식식단정보(mealServiceDietInfo) 응답 필드 파서.
  * - DDISH_NM: 요리명 (+ 알레르기 번호)
@@ -188,6 +190,34 @@ export function parseNeisOrigins(orplcInfo: string | undefined): NeisOriginInfo[
     const item = line.slice(0, idx).trim();
     const origin = line.slice(idx + 1).trim();
     if (item && origin) out.push({ item, origin });
+  }
+  return out;
+}
+
+/** 나이스 영양정보 항목 → 앱 영양소 ID (단위가 맞는 것만) */
+const NEIS_TO_NUTRIENT: { label: string; unit: string; id: NutrientId }[] = [
+  { label: "탄수화물", unit: "g", id: "carb_g" },
+  { label: "단백질", unit: "g", id: "protein_g" },
+  { label: "지방", unit: "g", id: "fat_g" },
+  { label: "나트륨", unit: "mg", id: "sodium_mg" },
+  { label: "식이섬유", unit: "g", id: "fiber_g" },
+];
+
+/**
+ * 나이스 제공 열량·영양정보를 앱 영양소 맵으로 바꾼다.
+ * 나이스에 없는 항목(보통 나트륨·식이섬유)은 빠진다.
+ */
+export function neisNutrientTotals(
+  kcal: number | null | undefined,
+  nutrients: NeisNutrientInfo[] | undefined,
+): Partial<Record<NutrientId, number>> {
+  const out: Partial<Record<NutrientId, number>> = {};
+  if (typeof kcal === "number" && kcal > 0) out.energy_kcal = kcal;
+  for (const n of nutrients ?? []) {
+    const hit = NEIS_TO_NUTRIENT.find(
+      (m) => n.label.replace(/\s/g, "") === m.label && n.unit.toLowerCase() === m.unit,
+    );
+    if (hit && Number.isFinite(n.value) && n.value >= 0) out[hit.id] = n.value;
   }
   return out;
 }
