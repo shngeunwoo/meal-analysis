@@ -40,12 +40,10 @@ function NutrientBar({
   id,
   value,
   target,
-  official = false,
 }: {
   id: NutrientId;
   value: number;
   target: number;
-  official?: boolean;
 }) {
   const pct = target > 0 ? Math.min((value / target) * 100, 100) : 0;
   const over = value > target;
@@ -54,14 +52,8 @@ function NutrientBar({
   return (
     <div className="space-y-1.5">
       <div className="flex items-baseline justify-between gap-2 text-sm">
-        <span className="flex items-center gap-1.5 font-medium text-stone-700 dark:text-stone-300">
+        <span className="font-medium text-stone-700 dark:text-stone-300">
           {NUTRIENT_LABEL_KO[id]}
-          <span
-            className={official ? "badge-brand" : "badge-muted"}
-            title={official ? "학교가 나이스에 공개한 영양정보" : "메뉴 매칭·분량 기반 DB 추정"}
-          >
-            {official ? "나이스" : "추정"}
-          </span>
         </span>
         <span className="tabular-nums text-stone-600 dark:text-stone-400">
           {formatValue(id, value)}
@@ -93,21 +85,20 @@ function NutrientBar({
 function TotalsTable({
   totals,
   targets,
-  officialIds,
+  ids,
 }: {
   totals: NutrientMap;
   targets: Record<NutrientId, number>;
-  officialIds: readonly NutrientId[];
+  ids: readonly NutrientId[];
 }) {
   return (
     <div className="space-y-4">
-      {NUTRIENT_ORDER.map((id) => (
+      {NUTRIENT_ORDER.filter((id) => ids.includes(id)).map((id) => (
         <NutrientBar
           key={id}
           id={id}
           value={totals[id] ?? 0}
           target={targets[id]}
-          official={officialIds.includes(id)}
         />
       ))}
     </div>
@@ -367,9 +358,7 @@ export function AnalyzeResults({ data }: { data: AnalyzeResultPayload }) {
         : {},
     [data.neisMeal],
   );
-  const hasNeisTotals = Object.keys(neisTotals).length > 0;
-  const [useNeisTotals, setUseNeisTotals] = useState(true);
-  const applyNeis = hasNeisTotals && useNeisTotals;
+  const applyNeis = Object.keys(neisTotals).length > 0;
 
   const analysis = useMemo(
     () =>
@@ -415,9 +404,11 @@ export function AnalyzeResults({ data }: { data: AnalyzeResultPayload }) {
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="kpi-tile-green">
-          <p className="text-xs font-medium text-brand-700/80 dark:text-brand-300/80">합산 음식</p>
+          <p className="text-xs font-medium text-brand-700/80 dark:text-brand-300/80">
+            {applyNeis ? "메뉴" : "합산 음식"}
+          </p>
           <p className="mt-1 text-2xl font-bold tabular-nums text-brand-800 dark:text-brand-200">
-            {analysis.includedCount}
+            {applyNeis ? (data.neisMeal?.dishes?.length ?? data.tokenCount) : analysis.includedCount}
           </p>
         </div>
         <div className="kpi-tile-warm">
@@ -442,77 +433,78 @@ export function AnalyzeResults({ data }: { data: AnalyzeResultPayload }) {
       </div>
 
       {data.neisMeal && (
-        <NeisMealCard
-          meal={data.neisMeal}
-          estimatedKcal={analysis.estimatedTotals.energy_kcal ?? 0}
-        />
+        <NeisMealCard meal={data.neisMeal} />
       )}
 
-      {analysis.pendingConfirmationCount > 0 && (
-        <div role="status" className="alert-warn">
-          확인이 필요한 매칭 <strong>{analysis.pendingConfirmationCount}건</strong>이 있습니다.
-          확인한 항목만 합산·추천에 반영됩니다.
+      {!applyNeis && (
+        <>
+        {analysis.pendingConfirmationCount > 0 && (
+          <div role="status" className="alert-warn">
+            확인이 필요한 매칭 <strong>{analysis.pendingConfirmationCount}건</strong>이 있습니다.
+            확인한 항목만 합산·추천에 반영됩니다.
+          </div>
+        )}
+
+        {analysis.includedCount === 0 && analysis.pendingConfirmationCount > 0 && (
+          <p className="text-sm text-stone-600 dark:text-stone-400">
+            아직 합산에 포함된 음식이 없습니다. 아래에서 「맞음 · 합산 포함」을 눌러 주세요.
+          </p>
+        )}
+
+        <div>
+          <h3 className="mb-3 text-sm font-semibold text-stone-700 dark:text-stone-300">
+            매칭된 음식
+          </h3>
+          <ul className="space-y-2">
+            {matches.map((m, i) => (
+              <MatchRow
+                key={`${m.query}-${i}`}
+                row={m}
+                foodOptions={data.foodOptions}
+                confirmed={confirmedQueries.has(m.query)}
+                excluded={excludedQueries.has(m.query)}
+                grams={
+                  gramsByQuery[m.query] ??
+                  (m.food ? defaultIntakeGrams(m.food) : 100)
+                }
+                onConfirm={() => {
+                  setConfirmedQueries((prev) => new Set(prev).add(m.query));
+                  setExcludedQueries((prev) => {
+                    const next = new Set(prev);
+                    next.delete(m.query);
+                    return next;
+                  });
+                }}
+                onExclude={() => {
+                  setExcludedQueries((prev) => new Set(prev).add(m.query));
+                  setConfirmedQueries((prev) => {
+                    const next = new Set(prev);
+                    next.delete(m.query);
+                    return next;
+                  });
+                }}
+                onMapped={(food) => {
+                  setManualFoods((prev) => ({ ...prev, [m.query]: food }));
+                  setConfirmedQueries((prev) => new Set(prev).add(m.query));
+                  setGramsByQuery((prev) => ({
+                    ...prev,
+                    [m.query]: defaultIntakeGrams(food),
+                  }));
+                }}
+                onGramsChange={(grams) => {
+                  setGramsByQuery((prev) => ({ ...prev, [m.query]: grams }));
+                }}
+              />
+            ))}
+          </ul>
+          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-stone-500">
+            <span>토큰 {data.tokenCount}개</span>
+            <span>추출: {extractionLabel}</span>
+          </div>
+          <p className="mt-1 text-xs text-stone-500">근거: {data.analysisEvidence}</p>
         </div>
+        </>
       )}
-
-      {analysis.includedCount === 0 && analysis.pendingConfirmationCount > 0 && (
-        <p className="text-sm text-stone-600 dark:text-stone-400">
-          아직 합산에 포함된 음식이 없습니다. 아래에서 「맞음 · 합산 포함」을 눌러 주세요.
-        </p>
-      )}
-
-      <div>
-        <h3 className="mb-3 text-sm font-semibold text-stone-700 dark:text-stone-300">
-          매칭된 음식
-        </h3>
-        <ul className="space-y-2">
-          {matches.map((m, i) => (
-            <MatchRow
-              key={`${m.query}-${i}`}
-              row={m}
-              foodOptions={data.foodOptions}
-              confirmed={confirmedQueries.has(m.query)}
-              excluded={excludedQueries.has(m.query)}
-              grams={
-                gramsByQuery[m.query] ??
-                (m.food ? defaultIntakeGrams(m.food) : 100)
-              }
-              onConfirm={() => {
-                setConfirmedQueries((prev) => new Set(prev).add(m.query));
-                setExcludedQueries((prev) => {
-                  const next = new Set(prev);
-                  next.delete(m.query);
-                  return next;
-                });
-              }}
-              onExclude={() => {
-                setExcludedQueries((prev) => new Set(prev).add(m.query));
-                setConfirmedQueries((prev) => {
-                  const next = new Set(prev);
-                  next.delete(m.query);
-                  return next;
-                });
-              }}
-              onMapped={(food) => {
-                setManualFoods((prev) => ({ ...prev, [m.query]: food }));
-                setConfirmedQueries((prev) => new Set(prev).add(m.query));
-                setGramsByQuery((prev) => ({
-                  ...prev,
-                  [m.query]: defaultIntakeGrams(food),
-                }));
-              }}
-              onGramsChange={(grams) => {
-                setGramsByQuery((prev) => ({ ...prev, [m.query]: grams }));
-              }}
-            />
-          ))}
-        </ul>
-        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-stone-500">
-          <span>토큰 {data.tokenCount}개</span>
-          <span>추출: {extractionLabel}</span>
-        </div>
-        <p className="mt-1 text-xs text-stone-500">근거: {data.analysisEvidence}</p>
-      </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="result-panel">
@@ -520,48 +512,22 @@ export function AnalyzeResults({ data }: { data: AnalyzeResultPayload }) {
             <h3 className="text-sm font-semibold text-stone-700 dark:text-stone-300">
               {applyNeis ? "합산 섭취 (나이스 영양정보)" : "합산 섭취 (추정)"}
             </h3>
-            {hasNeisTotals && (
-              <div
-                role="group"
-                aria-label="계산 기준"
-                className="inline-flex rounded-lg bg-stone-100 p-0.5 text-xs dark:bg-stone-800"
-              >
-                {[
-                  { on: true, label: "나이스 기준" },
-                  { on: false, label: "DB 추정" },
-                ].map((opt) => (
-                  <button
-                    key={opt.label}
-                    type="button"
-                    aria-pressed={useNeisTotals === opt.on}
-                    onClick={() => setUseNeisTotals(opt.on)}
-                    className={`rounded-md px-2.5 py-1 font-medium transition ${
-                      useNeisTotals === opt.on
-                        ? "bg-white text-stone-900 shadow-sm dark:bg-stone-950 dark:text-stone-100"
-                        : "text-stone-500 hover:text-stone-800 dark:hover:text-stone-200"
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
           <TotalsTable
             totals={analysis.totals}
             targets={targets}
-            officialIds={analysis.officialIds}
+            ids={analysis.comparedIds}
           />
           {applyNeis && (
             <p className="mt-3 text-xs leading-relaxed text-stone-500">
-              열량·탄수화물·단백질·지방은 학교가 공개한 1인분 제공량입니다. 나이스에 없는
-              나트륨·식이섬유만 메뉴 매칭으로 추정하므로, 분량(g)을 바꾸면 그 두 항목만
-              달라집니다.
+              학교가 나이스에 공개한 1인분 제공량입니다.
             </p>
           )}
-          <p className="mt-4 text-xs text-stone-500">
-            포함 {analysis.includedCount}개 항목
-          </p>
+          {!applyNeis && (
+            <p className="mt-4 text-xs text-stone-500">
+              포함 {analysis.includedCount}개 항목
+            </p>
+          )}
           {(analysis.over.sodium_mg ?? 0) > (targets.sodium_mg ?? 0) && (
             <p className="mt-2 text-xs leading-relaxed text-amber-800 dark:text-amber-200">
               나트륨이 크게 초과했다면 김치·국·조림 분량(g)을 줄여 보세요. 한식

@@ -15,12 +15,12 @@ import { recommendNextMeal, type Recommendation } from "@/lib/recommend";
 import type { FoodItem, FoodMatchRow, NutrientId, NutrientMap } from "@/types";
 
 export type MealAnalysisResult = {
-  /** 비교·추천에 쓰는 합산 (공식 영양정보가 있으면 그 값 우선) */
+  /** 비교·추천에 쓰는 합산 (공식 영양정보가 있으면 그 값만 사용) */
   totals: NutrientMap;
-  /** 내부 DB로만 추정한 합산 */
-  estimatedTotals: NutrientMap;
-  /** totals 중 공식(나이스) 값으로 채운 영양소 */
+  /** 공식(나이스) 값으로 계산한 영양소. 비어 있으면 DB 추정 */
   officialIds: NutrientId[];
+  /** 목표와 비교한 영양소 */
+  comparedIds: NutrientId[];
   short: Partial<Record<NutrientId, number>>;
   over: Partial<Record<NutrientId, number>>;
   recommendations: Recommendation[];
@@ -71,13 +71,22 @@ export function computeMealAnalysis(
     userConfirmedQueries,
     gramsByQuery,
   );
-  const estimatedTotals = sumNutrientsFromFoods(included);
   const officialIds = (Object.keys(officialTotals) as NutrientId[]).filter(
     (id) => typeof officialTotals[id] === "number",
   );
-  const totals: NutrientMap = { ...estimatedTotals };
-  for (const id of officialIds) totals[id] = officialTotals[id];
-  const targets = getMealTargets(mealCode);
+  // 공식 영양정보가 있으면 그 값만 쓰고, 공식 값이 없는 항목은 비교하지 않는다.
+  const useOfficial = officialIds.length > 0;
+  const totals: NutrientMap = useOfficial
+    ? Object.fromEntries(officialIds.map((id) => [id, officialTotals[id]]))
+    : sumNutrientsFromFoods(included);
+  const allTargets = getMealTargets(mealCode);
+  const targets = useOfficial
+    ? (Object.fromEntries(officialIds.map((id) => [id, allTargets[id]])) as Record<
+        NutrientId,
+        number
+      >)
+    : allTargets;
+  const comparedIds = Object.keys(targets) as NutrientId[];
   const short = shortageVsTarget(totals, targets);
   const over = excessVsTarget(totals, targets);
   const catalog = catalogForRecommend(matches, recommendCatalog);
@@ -95,8 +104,8 @@ export function computeMealAnalysis(
 
   return {
     totals,
-    estimatedTotals,
     officialIds,
+    comparedIds,
     short,
     over,
     recommendations,

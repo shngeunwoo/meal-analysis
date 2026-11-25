@@ -50,14 +50,14 @@ describe("computeMealAnalysis", () => {
     );
   });
 
-  it("공식(나이스) 영양값이 있으면 그 항목은 DB 추정 대신 쓴다", () => {
+  it("공식(나이스) 영양값이 있으면 그 값만 쓰고 없는 항목은 비교하지 않는다", () => {
     const rows = matchFoods(["밥", "김치"], FOODS, FOODS);
     const official = { energy_kcal: 812.4, carb_g: 112.3, protein_g: 35.2, fat_g: 22.1 };
     const r = computeMealAnalysis(rows, new Set(["밥", "김치"]), FOODS, "2", {}, official);
-    expect(r.totals.energy_kcal).toBe(812.4);
-    expect(r.totals.carb_g).toBe(112.3);
-    expect(r.totals.sodium_mg).toBe(r.estimatedTotals.sodium_mg);
-    expect(r.officialIds.sort()).toEqual(["carb_g", "energy_kcal", "fat_g", "protein_g"]);
+    expect(r.totals).toEqual(official);
+    expect(r.comparedIds.sort()).toEqual(["carb_g", "energy_kcal", "fat_g", "protein_g"]);
+    expect(r.short.sodium_mg).toBeUndefined();
+    expect(r.over.sodium_mg).toBeUndefined();
     // 열량 812 kcal 은 중식 목표(700 kcal)를 넘는다
     expect(r.over.energy_kcal).toBeCloseTo(112.4, 1);
   });
@@ -69,6 +69,5 @@ describe("computeMealAnalysis", () => {
     const b = computeMealAnalysis(rows, new Set(["밥"]), FOODS, "2", { 밥: 400 }, official);
     expect(a.totals.energy_kcal).toBe(650);
     expect(b.totals.energy_kcal).toBe(650);
-    expect(b.estimatedTotals.energy_kcal!).toBeGreaterThan(a.estimatedTotals.energy_kcal!);
   });
 });

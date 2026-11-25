@@ -18,13 +18,7 @@ function formatNumber(n: number): string {
   return Number.isInteger(n) ? String(n) : n.toFixed(1);
 }
 
-export function NeisMealCard({
-  meal,
-  estimatedKcal,
-}: {
-  meal: NeisMeal;
-  estimatedKcal: number;
-}) {
+export function NeisMealCard({ meal }: { meal: NeisMeal }) {
   const dishes = meal.dishes ?? [];
   const neisKcal = meal.kcal ?? parseNeisCalories(meal.calInfo);
   const nutrients = meal.nutrients ?? [];
@@ -32,11 +26,6 @@ export function NeisMealCard({
   const allAllergens = [...new Set(dishes.flatMap((d) => d.allergens))].sort(
     (a, b) => a - b,
   );
-  const diffPct =
-    neisKcal && estimatedKcal > 0
-      ? Math.round(((estimatedKcal - neisKcal) / neisKcal) * 100)
-      : null;
-
   return (
     <div className="result-panel space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -88,36 +77,11 @@ export function NeisMealCard({
       )}
 
       {neisKcal != null && (
-        <div className="grid grid-cols-2 gap-3 rounded-xl bg-stone-50 p-3 text-sm dark:bg-stone-900/60">
-          <div>
-            <p className="text-xs text-stone-500">학교 제공 열량 (나이스)</p>
-            <p className="mt-0.5 text-lg font-semibold tabular-nums text-stone-800 dark:text-stone-100">
-              {Math.round(neisKcal)} <span className="text-xs font-medium">kcal</span>
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-stone-500">앱 추정 합산</p>
-            <p className="mt-0.5 text-lg font-semibold tabular-nums text-stone-800 dark:text-stone-100">
-              {Math.round(estimatedKcal)} <span className="text-xs font-medium">kcal</span>
-              {diffPct != null && diffPct !== 0 && (
-                <span
-                  className={`ml-1.5 text-xs font-medium ${
-                    Math.abs(diffPct) >= 25
-                      ? "text-amber-700 dark:text-amber-300"
-                      : "text-stone-500"
-                  }`}
-                >
-                  ({diffPct > 0 ? "+" : ""}
-                  {diffPct}%)
-                </span>
-              )}
-            </p>
-          </div>
-          {diffPct != null && Math.abs(diffPct) >= 25 && (
-            <p className="col-span-2 text-xs text-amber-800 dark:text-amber-200">
-              학교 제공 열량과 차이가 큽니다. 아래에서 매칭이나 분량(g)을 확인해 보세요.
-            </p>
-          )}
+        <div className="rounded-xl bg-stone-50 p-3 text-sm dark:bg-stone-900/60">
+          <p className="text-xs text-stone-500">학교 제공 열량 (나이스)</p>
+          <p className="mt-0.5 text-lg font-semibold tabular-nums text-stone-800 dark:text-stone-100">
+            {Math.round(neisKcal)} <span className="text-xs font-medium">kcal</span>
+          </p>
         </div>
       )}
 
@@ -155,7 +119,7 @@ export function NeisMealCard({
       )}
 
       <p className="text-xs text-stone-500">
-        출처: {meal.source} · 아래 영양 합산은 내부 DB 추정치입니다.
+        출처: {meal.source}
       </p>
     </div>
   );

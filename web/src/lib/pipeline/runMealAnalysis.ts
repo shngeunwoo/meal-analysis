@@ -122,7 +122,7 @@ export async function runMealAnalysis(
     ? `한 끼 목표(${mealLabel[options.mealCode] ?? options.mealCode})`
     : "일일 목표";
   const totalsEvidence = hasOfficial
-    ? "열량·탄수화물·단백질·지방: 나이스 제공 영양정보 · 그 외: 신뢰도 70% 이상 또는 확인한 매칭의 DB 추정"
+    ? "합산: 나이스 제공 영양정보"
     : "합산: 신뢰도 70% 이상 또는 확인한 매칭만";
   const baseEvidence =
     `${targetLabel}: 성인 일반 근사치 · ${totalsEvidence} · 영양 DB: 식품의약품안전처(MFDS) · DB 없음 항목: AI 재매칭 시도`;
